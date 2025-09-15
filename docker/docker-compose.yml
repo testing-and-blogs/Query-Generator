@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${DATABASE_URL##*/}
+      - POSTGRES_USER=${DATABASE_URL##*://}
+      - POSTGRES_PASSWORD=${DATABASE_URL##*:}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../backend
+    command: gunicorn app.asgi:application -k uvicorn.workers.UvicornWorker -w 4 --bind 0.0.0.0:8000
+    volumes:
+      - ../backend/:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../backend
+    command: celery -A app.celery worker -l info
+    volumes:
+      - ../backend/:/app
+    env_file:
+      - ../.env
+    depends_on:
+      api:
+        condition: service_started
+
+  scheduler:
+    build:
+      context: ../backend
+    command: celery -A app.celery beat -l info
+    volumes:
+      - ../backend/:/app
+    env_file:
+      - ../.env
+    depends_on:
+      api:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ../frontend
+    command: npm run dev -- --host
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:5173" # Assuming Vite's default port 5173
+    env_file:
+      - ../.env
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+      - frontend
+
+  # --- Optional Observability Stack ---
+  flower:
+    image: mher/flower:2.0
+    command: ["flower", "--broker=${REDIS_URL}", "--port=5555"]
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    profiles:
+      - observability
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    # volumes:
+    #   - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    profiles:
+      - observability
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    ports:
+      - "3001:3000" # Use 3001 to avoid conflict with frontend
+    profiles:
+      - observability
+
+volumes:
+  postgres_data:

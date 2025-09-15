@@ -1,0 +1,57 @@
+[tool.poetry]
+name = "nlq-backend"
+version = "0.1.0"
+description = "Backend for the Schema-Aware NLQ Platform"
+authors = ["Jules <agent@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11" # Pinned to a slightly more common version than 3.13 for broader compatibility
+Django = "~=5.2"
+djangorestframework = "~=3.15" # Spec has 3.16, but 3.15 is latest stable at time of writing
+psycopg = {version = "~=3.2", extras = ["binary"]}
+PyMySQL = "~=1.1"
+pyodbc = "~=5.1"
+sqlalchemy = "~=2.0"
+sqlglot = "~=27.0"
+celery = "~=5.4" # Spec has 5.5, but 5.4 is latest stable
+redis = "~=5.0"
+python-dotenv = "~=1.0"
+cryptography = "~=43.0"
+uvicorn = "~=0.30"
+gunicorn = "~=22.0"
+django-cors-headers = "^4.3.1"
+drf-spectacular = "^0.27.2"
+django-filter = "^24.2"
+dj-database-url = "^2.1.0"
+python-json-logger = "^2.0.7"
+argon2-cffi = "^23.1.0"
+
+
+# Optional dependencies from the spec
+sentence-transformers = { version = "^3.0.0", optional = true }
+faiss-cpu = { version = "^1.8.0", optional = true }
+sqlfluff = { version = "^3.0.7", optional = true }
+presidio-analyzer = { version = "^2.2", optional = true }
+presidio-anonymizer = { version = "^2.2", optional = true }
+django-axes = { version = "^6.0.0", optional = true }
+django-ratelimit = { version = "^4.0.0", optional = true }
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-django = "^4.8.0"
+black = "^24.4.2"
+ruff = "^0.4.4"
+[tool.poetry.extras]
+embeddings = ["sentence-transformers", "faiss-cpu"]
+quality = ["sqlfluff", "presidio-analyzer", "presidio-anonymizer"]
+security = ["django-axes", "django-ratelimit"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "app.settings.local"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
