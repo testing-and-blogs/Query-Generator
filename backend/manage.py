@@ -8,7 +8,7 @@ import dotenv
 def main():
     """Run administrative tasks."""
     # This will read the .env file in the parent directory
-    dotenv.read_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+    dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings.local')
     try:
